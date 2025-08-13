@@ -25,12 +25,11 @@ const formatElosDate = (elosDate: string): string => {
   if (isNaN(timestamp)) return '';
 
   const date = new Date(timestamp);
-  const zonedDate = toZonedTime(date, TIME_ZONE);
 
   try {
-    return formatTz(zonedDate, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", { timeZone: TIME_ZONE });
+    return formatInTimeZone(date, TIME_ZONE, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
   } catch(e) {
-    console.error("Error formatting Elos Date with date-fns-tz:", e, " Date:", zonedDate, " Timestamp:", timestamp);
+    console.error("Error formatting Elos Date with date-fns-tz:", e, " Date:", date, " Timestamp:", timestamp);
     return new Date(timestamp).toISOString();
   }
 };
