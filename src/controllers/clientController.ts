@@ -1,18 +1,38 @@
 import { Request, Response } from "express";
 import axios from "axios";
+import { format as formatTz, parseISO } from 'date-fns';
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 
 const ELOS_URL = "https://botoclinic.elosclub.com.br";
+const TIME_ZONE = 'America/Sao_Paulo';
 
 // Função auxiliar para criar string de cookies
-const createCookieString = (authToken: string) => {
+const createCookieString = (authToken: string, structureId: string = "58") => {
   return [
     `tz=America%2FMaceio`,
     `slot-routing-url=-`,
-    `current-organizational-structure=58`,
+    `current-organizational-structure=${structureId}`,
     `_ga=GA1.1.1853101631.1733855667`,
     `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
     `Authentication=${authToken}`,
   ].join("; ");
+};
+
+// Função auxiliar para converter o formato de data do Elos
+const formatElosDate = (elosDate: string): string => {
+  if (!elosDate) return '';
+  const timestamp = parseInt(elosDate.replace('/Date(', '').replace(')/', ''));
+  if (isNaN(timestamp)) return '';
+
+  const date = new Date(timestamp);
+  const zonedDate = toZonedTime(date, TIME_ZONE);
+
+  try {
+    return formatTz(zonedDate, "yyyy-MM-dd'T'HH:mm:ss.SSSXXX", { timeZone: TIME_ZONE });
+  } catch(e) {
+    console.error("Error formatting Elos Date with date-fns-tz:", e, " Date:", zonedDate, " Timestamp:", timestamp);
+    return new Date(timestamp).toISOString();
+  }
 };
 
 // Função auxiliar para formatar telefone
@@ -58,6 +78,68 @@ interface BirthdayReportItem {
   IsWhatsappAllowed: string;
   IsEmailAllowed: string;
   INATIVO: string;
+}
+
+// Interface para itens do histórico de sessões executadas
+interface HistorySessionItem {
+  Id: number;
+  OwnerOrgStruct_Id: number;
+  OwnerOrgStruct_Description: string;
+  Budget_Id: number | null;
+  Budget_Code: string | null;
+  Item_Id: number;
+  Item_Description: string;
+  Session: string;
+  Note: string | null;
+  Note2: string | null;
+  Info: string;
+  CreateUser_Name: string;
+  CreateUser_ClassRegistryCode: string | null;
+  CreateDate: string;
+  HasPhotos: boolean;
+  Intercurrence: boolean;
+  UsedResource_Id: number;
+  UsedResource_Description: string;
+  Budget_Status: number | null;
+  TransferBudget_Id: number | null;
+  TransferBudget_Origin: string | null;
+  TransferBudget_Destiny: string | null;
+  SchedulerEventId: number;
+  HasEvolutionQuiz: boolean;
+  EvolutionQuizExecutionItemId: number;
+  Status: number;
+}
+
+// Interface para grupo de histórico
+interface HistoryGroup {
+  Key: string;
+  ItemCount: number;
+  HasSubgroups: boolean;
+  Member: string;
+  Items: HistorySessionItem[];
+  Aggregates: any;
+  SubgroupCount: number;
+}
+
+// Interface para sessão processada
+interface ProcessedSession {
+  id: number;
+  unitId: number;
+  unitName: string;
+  budgetId: number | null;
+  budgetCode: string | null;
+  procedureId: number;
+  procedureName: string;
+  session: string;
+  note: string;
+  info: string;
+  professionalName: string;
+  createDate: string;
+  createDateFormatted: string;
+  hasPhotos: boolean;
+  budgetStatus: number | null;
+  schedulerEventId: number;
+  status: number;
 }
 
 // Função para buscar clientes
@@ -527,5 +609,239 @@ export const getAllClientsByUnit = async (req: Request, res: Response) => {
       });
     }
     res.status(500).json({ error: "Erro ao buscar clientes da unidade" });
+  }
+};
+
+// Função para buscar histórico de sessões executadas do cliente
+export const getClientHistory = async (req: Request, res: Response) => {
+  try {
+    console.log("[getClientHistory] Recebendo requisição:", {
+      method: req.method,
+      path: req.path,
+      body: req.body,
+      headers: req.headers.authorization
+        ? "Com Authorization"
+        : "Sem Authorization",
+    });
+
+    const authToken = req.headers.authorization?.split(" ")[1];
+    const structureId = (req.headers["x-organization-structure"] as string) || "58";
+
+    if (!authToken) {
+      res.status(401).json({ error: "Token não fornecido" });
+      return;
+    }
+
+    // Obter parâmetros do corpo da requisição
+    const {
+      clientId,
+      pageSize = 10,
+      page = 1,
+      sort = "",
+      group = "Item_Description-asc",
+      filter = "",
+    } = req.body;
+
+    // Validar parâmetros obrigatórios
+    if (!clientId) {
+      res.status(400).json({
+        error: "ID do cliente não fornecido",
+        required: ["clientId"],
+      });
+      return;
+    }
+
+    // Criar a string de cookies
+    const cookies = createCookieString(authToken, structureId);
+
+    // Criar os dados do formulário exatamente como no CURL fornecido
+    const formData = new URLSearchParams({
+      sort: sort.toString(),
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+      group: group.toString(),
+      filter: filter.toString(),
+      clientId: clientId.toString(),
+    }).toString();
+
+    console.log("Enviando requisição de histórico do cliente:", {
+      url: `${ELOS_URL}/Client360/Historic/ListExecutedSessions`,
+      clientId,
+      structureId,
+    });
+
+    const response = await axios.post(
+      `${ELOS_URL}/Client360/Historic/ListExecutedSessions`,
+      formData,
+      {
+        headers: {
+          accept: "*/*",
+          "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          dnt: "1",
+          origin: ELOS_URL,
+          priority: "u=1, i",
+          referer: `${ELOS_URL}/`,
+          "sec-ch-ua": '"Chromium";v="139", "Not;A=Brand";v="99"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"macOS"',
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-origin",
+          "user-agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
+          "x-requested-with": "XMLHttpRequest",
+          cookie: cookies,
+        },
+      }
+    );
+
+    // Verificar se houve erro de autenticação
+    if (response.status === 401 || response.status === 403) {
+      console.error("Erro de autenticação na API Elos:", {
+        status: response.status,
+        data: response.data,
+      });
+      res.status(401).json({ error: "Token inválido ou expirado" });
+      return;
+    }
+
+    // Verificar se a resposta é um HTML (provavelmente página de login)
+    if (
+      typeof response.data === "string" &&
+      (response.data.includes("<html") ||
+        response.data.includes("<!DOCTYPE html"))
+    ) {
+      console.error(
+        "Recebida página HTML em vez de JSON - possível erro de autenticação:",
+        {
+          status: response.status,
+          data: response.data.substring(0, 200) + "...",
+        }
+      );
+      res.status(401).json({ error: "Token inválido ou expirado" });
+      return;
+    }
+
+    // Verificar se a resposta contém dados válidos
+    if (!response.data || typeof response.data !== "object") {
+      console.error("Resposta inválida da API Elos:", {
+        status: response.status,
+        data: response.data,
+      });
+      res.status(500).json({ error: "Erro ao processar resposta da API" });
+      return;
+    }
+
+    // Processar e transformar os dados do histórico
+    const processedSessions: ProcessedSession[] = [];
+    const evaluationSessions: ProcessedSession[] = [];
+    const postEvaluationSessions: ProcessedSession[] = [];
+
+    if (response.data.Data && Array.isArray(response.data.Data)) {
+      // Processar cada grupo de procedimentos
+      response.data.Data.forEach((group: HistoryGroup) => {
+        if (group.Items && Array.isArray(group.Items)) {
+          group.Items.forEach((item: HistorySessionItem) => {
+            const createDateISO = formatElosDate(item.CreateDate);
+            let createDateFormatted = '';
+
+            try {
+              if (createDateISO) {
+                const parsedDate = parseISO(createDateISO);
+                createDateFormatted = formatInTimeZone(parsedDate, TIME_ZONE, 'dd/MM/yyyy HH:mm');
+              }
+            } catch (e) {
+              console.error(`Error formatting date ${createDateISO}:`, e);
+              createDateFormatted = item.CreateDate;
+            }
+
+            const processedSession: ProcessedSession = {
+              id: item.Id,
+              unitId: item.OwnerOrgStruct_Id,
+              unitName: item.OwnerOrgStruct_Description,
+              budgetId: item.Budget_Id,
+              budgetCode: item.Budget_Code,
+              procedureId: item.Item_Id,
+              procedureName: item.Item_Description,
+              session: item.Session,
+              note: [item.Note, item.Note2].filter(Boolean).join(" | ") || item.Info,
+              info: item.Info,
+              professionalName: item.CreateUser_Name,
+              createDate: createDateISO,
+              createDateFormatted,
+              hasPhotos: item.HasPhotos,
+              budgetStatus: item.Budget_Status,
+              schedulerEventId: item.SchedulerEventId,
+              status: item.Status,
+            };
+
+            processedSessions.push(processedSession);
+
+            // Separar avaliações de outros procedimentos
+            if (item.Item_Description.toLowerCase().includes("avaliação")) {
+              evaluationSessions.push(processedSession);
+            } else if (item.Budget_Id) {
+              // Procedimentos com orçamento (fecharam)
+              postEvaluationSessions.push(processedSession);
+            }
+          });
+        }
+      });
+    }
+
+    // Análise de conversão pós-avaliação
+    const conversionAnalysis = {
+      totalEvaluations: evaluationSessions.length,
+      totalPostEvaluationProcedures: postEvaluationSessions.length,
+      hasConvertedAfterEvaluation: postEvaluationSessions.length > 0,
+      conversionRate: evaluationSessions.length > 0 
+        ? ((postEvaluationSessions.length / evaluationSessions.length) * 100).toFixed(2) + '%'
+        : '0%',
+      distinctBudgets: [...new Set(postEvaluationSessions.map(s => s.budgetCode).filter(Boolean))].length,
+    };
+
+    console.log("Histórico do cliente processado:", {
+      clientId,
+      totalSessions: processedSessions.length,
+      evaluations: evaluationSessions.length,
+      postEvaluationProcedures: postEvaluationSessions.length,
+      hasConverted: conversionAnalysis.hasConvertedAfterEvaluation,
+    });
+
+    res.json({
+      success: true,
+      clientId: parseInt(clientId),
+      total: processedSessions.length,
+      conversionAnalysis,
+      sessions: {
+        all: processedSessions,
+        evaluations: evaluationSessions,
+        postEvaluation: postEvaluationSessions,
+      },
+    });
+  } catch (error) {
+    console.error("Erro ao buscar histórico do cliente:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Detalhes do erro:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        headers: error.response?.headers,
+      });
+
+      // Verificar se é um erro de autenticação
+      if (
+        error.response?.status === 401 ||
+        error.response?.status === 403 ||
+        (error.response?.data &&
+          typeof error.response.data === "string" &&
+          (error.response.data.includes("<html") ||
+            error.response.data.includes("<!DOCTYPE html")))
+      ) {
+        res.status(401).json({ error: "Token inválido ou expirado" });
+        return;
+      }
+    }
+    res.status(500).json({ error: "Erro ao buscar histórico do cliente" });
   }
 };
