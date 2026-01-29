@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import axios from "axios";
 import * as cheerio from "cheerio";
-
-const ELOS_URL = "https://botoclinic.elosclub.com.br";
+import { getProvider } from '../config/providers';
+import { ProviderType } from '../types/provider';
 
 // Função para obter o token de verificação
-const getRequestVerificationToken = async (): Promise<string> => {
+const getRequestVerificationToken = async (baseUrl: string): Promise<string> => {
   try {
-    const response = await axios.get(`${ELOS_URL}/Login`);
+    const response = await axios.get(`${baseUrl}/Login`);
     const $ = cheerio.load(response.data);
     const token = $('input[name="__RequestVerificationToken"]').val() as string;
 
@@ -28,6 +28,9 @@ export const login = async (
   res: Response,
   next: NextFunction
 ): Promise<void> => {
+  // Declarar providerConfig fora do try para usar no catch também
+  let providerConfig;
+
   try {
     console.log("[login] Recebendo requisição de login:", {
       method: req.method,
@@ -35,18 +38,29 @@ export const login = async (
       body: {
         login: req.body.login ? "Fornecido" : "Não fornecido",
         password: req.body.password ? "Fornecido" : "Não fornecido",
+        provider: req.body.provider || "elos (padrão)",
       },
     });
 
-    const { login, password } = req.body;
+    const { login, password, provider = "elos" } = req.body;
 
     if (!login || !password) {
       res.status(400).json({ error: "Login e senha são obrigatórios" });
       return;
     }
 
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    providerConfig = getProvider(provider as ProviderType);
+    console.log(`[login] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
+
     // Obter o token de verificação
-    const token = await getRequestVerificationToken();
+    const token = await getRequestVerificationToken(providerConfig.baseUrl);
     console.log("Token de verificação obtido com sucesso");
 
     // Preparar dados do fingerprint
@@ -68,13 +82,13 @@ export const login = async (
     });
 
     // Fazer a requisição de login
-    const loginResponse = await axios.post(`${ELOS_URL}/Login`, formData, {
+    const loginResponse = await axios.post(`${providerConfig.baseUrl}/Login`, formData, {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-        Referer: `${ELOS_URL}/Login`,
-        Origin: ELOS_URL,
+        "Referer": `${providerConfig.baseUrl}/Login`,
+        "Origin": providerConfig.baseUrl,
       },
       maxRedirects: 0,
       validateStatus: (status) => status >= 200 && status < 400,
@@ -105,6 +119,7 @@ export const login = async (
     res.status(200).json({
       success: true,
       token: authToken,
+      provider: providerConfig.name,
       message: "Login realizado com sucesso",
     });
   } catch (error: any) {
@@ -127,6 +142,7 @@ export const login = async (
           res.status(200).json({
             success: true,
             token: authToken,
+            provider: providerConfig?.name || "Desconhecido",
             message: "Login realizado com sucesso",
           });
           return;

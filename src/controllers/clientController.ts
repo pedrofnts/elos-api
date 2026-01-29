@@ -2,8 +2,7 @@ import { Request, Response } from "express";
 import axios from "axios";
 import { format as formatTz, parseISO } from 'date-fns';
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
-
-const ELOS_URL = "https://botoclinic.elosclub.com.br";
+import apiClient from '../services/apiClient';
 const TIME_ZONE = 'America/Sao_Paulo';
 
 // Função auxiliar para criar string de cookies
@@ -176,25 +175,23 @@ export const searchClients = async (req: Request, res: Response) => {
     const timestamp = new Date().getTime();
 
     console.log("Enviando requisição de busca de clientes:", {
-      url: `${ELOS_URL}/Search/Get`,
+      url: `/Search/Get`,
       cookies: "cookie-string", // Não logar cookies completos
       searchTerm,
     });
 
-    const url = `${ELOS_URL}/Search/Get?searchTerm=${encodeURIComponent(
+    const url = `/Search/Get?searchTerm=${encodeURIComponent(
       searchTerm
     )}&pageSize=${pageSize}&pageNum=${pageNum}&searchName=Client&extraCondition=&_=${timestamp}`;
 
-    const response = await axios.get(url, {
+    const response = await apiClient.get(url, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "cache-control": "no-cache",
         dnt: "1",
-        origin: ELOS_URL,
         pragma: "no-cache",
         priority: "u=1, i",
-        referer: `${ELOS_URL}/`,
         "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
@@ -293,7 +290,7 @@ export const listFilteredClients = async (req: Request, res: Response) => {
     }).toString();
 
     console.log("Enviando requisição de listagem filtrada de clientes:", {
-      url: `${ELOS_URL}/Client/ListFilteredClients`,
+      url: `/Client/ListFilteredClients`,
       dados: {
         sort,
         page,
@@ -305,8 +302,8 @@ export const listFilteredClients = async (req: Request, res: Response) => {
       },
     });
 
-    const response = await axios.post(
-      `${ELOS_URL}/Client/ListFilteredClients`,
+    const response = await apiClient.post(
+      `/Client/ListFilteredClients`,
       formData,
       {
         headers: {
@@ -315,11 +312,9 @@ export const listFilteredClients = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -403,7 +398,7 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
     ].join("; ");
 
     console.log("Enviando requisição de aniversariantes do dia:", {
-      url: `${ELOS_URL}/Report/Custom/List`,
+      url: `/Report/Custom/List`,
       date: formattedDate,
       structureId,
     });
@@ -422,8 +417,8 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
       "Filters[0].Value2": formattedDate,
     }).toString();
 
-    const response = await axios.post(
-      `${ELOS_URL}/Report/Custom/List`,
+    const response = await apiClient.post(
+      `/Report/Custom/List`,
       formData,
       {
         headers: {
@@ -432,11 +427,9 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Chromium";v="135", "Not-A.Brand";v="8"',
+            "sec-ch-ua": '"Chromium";v="135", "Not-A.Brand";v="8"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -551,11 +544,11 @@ export const getAllClientsByUnit = async (req: Request, res: Response) => {
     }).toString();
 
     // Logs para debug
-    console.log("[getAllClientsByUnit] Enviando requisição para:", `${ELOS_URL}/Report/Custom/List`);
+    console.log("[getAllClientsByUnit] Enviando requisição para:", `/Report/Custom/List`);
     console.log("[getAllClientsByUnit] FormData:", formData);
 
-    const response = await axios.post(
-      `${ELOS_URL}/Report/Custom/List`,
+    const response = await apiClient.post(
+      `/Report/Custom/List`,
       formData,
       {
         headers: {
@@ -564,11 +557,9 @@ export const getAllClientsByUnit = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not.A/Brand";v="99", "Chromium";v="136"',
+            "sec-ch-ua": '"Not.A/Brand";v="99", "Chromium";v="136"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -664,13 +655,13 @@ export const getClientHistory = async (req: Request, res: Response) => {
     }).toString();
 
     console.log("Enviando requisição de histórico do cliente:", {
-      url: `${ELOS_URL}/Client360/Historic/ListExecutedSessions`,
+      url: `/Client360/Historic/ListExecutedSessions`,
       clientId,
       structureId,
     });
 
-    const response = await axios.post(
-      `${ELOS_URL}/Client360/Historic/ListExecutedSessions`,
+    const response = await apiClient.post(
+      `/Client360/Historic/ListExecutedSessions`,
       formData,
       {
         headers: {
@@ -678,10 +669,8 @@ export const getClientHistory = async (req: Request, res: Response) => {
           "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Chromium";v="139", "Not;A=Brand";v="99"',
+            priority: "u=1, i",
+            "sec-ch-ua": '"Chromium";v="139", "Not;A=Brand";v="99"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",

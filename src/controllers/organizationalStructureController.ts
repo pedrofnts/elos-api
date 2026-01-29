@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import axios from "axios";
-
-const ELOS_URL = "https://botoclinic.elosclub.com.br";
+import apiClient from '../services/apiClient';
 
 // Função auxiliar para criar string de cookies
 const createCookieString = (authToken: string, structureId: string = "58") => {
@@ -50,12 +49,12 @@ export const listOrganizationalStructures = async (
     }).toString();
 
     console.log("Enviando requisição de estruturas organizacionais:", {
-      url: `${ELOS_URL}/OrganizationalStructure/ListUser`,
+      url: `/OrganizationalStructure/ListUser`,
       structureId,
     });
 
-    const response = await axios.post(
-      `${ELOS_URL}/OrganizationalStructure/ListUser`,
+    const response = await apiClient.post(
+      `/OrganizationalStructure/ListUser`,
       formData,
       {
         headers: {
@@ -64,11 +63,9 @@ export const listOrganizationalStructures = async (
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -152,7 +149,7 @@ export const setCurrentOrganizationalStructure = async (
     console.log(
       "Enviando requisição de definição de estrutura organizacional atual:",
       {
-        url: `${ELOS_URL}/OrganizationalStructure/GetByIdWithConfigurationsForDomain`,
+        url: `/OrganizationalStructure/GetByIdWithConfigurationsForDomain`,
         structureId,
       }
     );
@@ -160,18 +157,16 @@ export const setCurrentOrganizationalStructure = async (
     // Esta requisição é feita para obter os detalhes da estrutura selecionada
     // Equivalente ao que acontece na interface web ao selecionar uma nova unidade
     const response = await axios.get(
-      `${ELOS_URL}/OrganizationalStructure/GetByIdWithConfigurationsForDomain?id=${structureId}`,
+      `/OrganizationalStructure/GetByIdWithConfigurationsForDomain?id=${structureId}`,
       {
         headers: {
           accept: "*/*",
           "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
           "cache-control": "no-cache",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",

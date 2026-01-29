@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import axios from "axios";
-
-const ELOS_URL = "https://botoclinic.elosclub.com.br";
+import { getProvider } from '../config/providers';
+import { ProviderType } from '../types/provider';
 
 // Função auxiliar para criar string de cookies
 const createCookieString = (authToken: string, structureId: string = "58") => {
@@ -47,6 +47,7 @@ export const getSchedules = async (req: Request, res: Response) => {
       locality = "",
       start,
       end,
+      provider = "elos",
     } = req.body;
 
     // Validar parâmetros obrigatórios
@@ -57,6 +58,16 @@ export const getSchedules = async (req: Request, res: Response) => {
       });
       return;
     }
+
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
+    console.log(`[getSchedules] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -75,21 +86,19 @@ export const getSchedules = async (req: Request, res: Response) => {
     }).toString();
 
     console.log("Enviando requisição de agendamentos:", {
-      url: `${ELOS_URL}/Scheduler/Read`,
+      url: `${providerConfig.baseUrl}/Scheduler/Read`,
       dados: { start, end, structureId },
     });
 
-    const response = await axios.post(`${ELOS_URL}/Scheduler/Read`, formData, {
+    const response = await axios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "cache-control": "no-cache",
         "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
         dnt: "1",
-        origin: ELOS_URL,
         pragma: "no-cache",
         priority: "u=1, i",
-        referer: `${ELOS_URL}/`,
         "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
@@ -99,6 +108,8 @@ export const getSchedules = async (req: Request, res: Response) => {
         "user-agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         "x-requested-with": "XMLHttpRequest",
+        origin: providerConfig.baseUrl,
+        referer: `${providerConfig.baseUrl}/`,
         cookie: cookies,
       },
     });
@@ -154,6 +165,7 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
       OrganizationStructureSelected_Id,
       NumberOfNearbyEstablishments,
       Rescheduler_Id,
+      provider = "elos",
     } = req.body;
 
     // Validar parâmetros obrigatórios
@@ -164,6 +176,15 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
       });
       return;
     }
+
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -198,12 +219,12 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
       formData.append("Rescheduler_Id", Rescheduler_Id.toString());
 
     console.log("Enviando requisição de períodos de disponibilidade:", {
-      url: `${ELOS_URL}/Scheduler/AvailabilityPeriods`,
+      url: `${providerConfig.baseUrl}/Scheduler/AvailabilityPeriods`,
       dados: req.body,
     });
 
     const response = await axios.post(
-      `${ELOS_URL}/Scheduler/AvailabilityPeriods`,
+      `${providerConfig.baseUrl}/Scheduler/AvailabilityPeriods`,
       formData,
       {
         headers: {
@@ -212,11 +233,9 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -225,6 +244,8 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
           "user-agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
           "x-requested-with": "XMLHttpRequest",
+          origin: providerConfig.baseUrl,
+          referer: `${providerConfig.baseUrl}/`,
           cookie: cookies,
         },
       }
@@ -270,7 +291,7 @@ export const submitAvailability = async (req: Request, res: Response) => {
     }
 
     // Extrair os parâmetros do corpo da requisição
-    const { model, selected } = req.body;
+    const { model, selected, provider = "elos" } = req.body;
 
     // Validar parâmetros obrigatórios
     if (!model || !selected) {
@@ -280,6 +301,15 @@ export const submitAvailability = async (req: Request, res: Response) => {
       });
       return;
     }
+
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -317,12 +347,12 @@ export const submitAvailability = async (req: Request, res: Response) => {
     );
 
     console.log("Enviando requisição de agendamento:", {
-      url: `${ELOS_URL}/Scheduler/SubmitAvailability`,
+      url: `${providerConfig.baseUrl}/Scheduler/SubmitAvailability`,
       dados: { model, selected },
     });
 
     const response = await axios.post(
-      `${ELOS_URL}/Scheduler/SubmitAvailability`,
+      `${providerConfig.baseUrl}/Scheduler/SubmitAvailability`,
       formData,
       {
         headers: {
@@ -331,11 +361,9 @@ export const submitAvailability = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -344,6 +372,8 @@ export const submitAvailability = async (req: Request, res: Response) => {
           "user-agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
           "x-requested-with": "XMLHttpRequest",
+          origin: providerConfig.baseUrl,
+          referer: `${providerConfig.baseUrl}/`,
           cookie: cookies,
         },
       }
@@ -387,7 +417,7 @@ export const updateStatus = async (req: Request, res: Response) => {
     }
 
     // Obter parâmetros do corpo da requisição
-    const { id, status, ignoreReleaseValidation, observations } = req.body;
+    const { id, status, ignoreReleaseValidation, observations, provider = "elos" } = req.body;
 
     // Validar parâmetros obrigatórios
     if (!id || status === undefined) {
@@ -397,6 +427,15 @@ export const updateStatus = async (req: Request, res: Response) => {
       });
       return;
     }
+
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -410,12 +449,12 @@ export const updateStatus = async (req: Request, res: Response) => {
     }).toString();
 
     console.log("Enviando requisição de atualização de status:", {
-      url: `${ELOS_URL}/Scheduler/UpdateStatus`,
+      url: `${providerConfig.baseUrl}/Scheduler/UpdateStatus`,
       dados: { id, status, ignoreReleaseValidation, observations },
     });
 
     const response = await axios.post(
-      `${ELOS_URL}/Scheduler/UpdateStatus`,
+      `${providerConfig.baseUrl}/Scheduler/UpdateStatus`,
       formData,
       {
         headers: {
@@ -424,11 +463,9 @@ export const updateStatus = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -437,6 +474,8 @@ export const updateStatus = async (req: Request, res: Response) => {
           "user-agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
           "x-requested-with": "XMLHttpRequest",
+          origin: providerConfig.baseUrl,
+          referer: `${providerConfig.baseUrl}/`,
           cookie: cookies,
         },
       }
@@ -479,6 +518,7 @@ export const getScheduleById = async (req: Request, res: Response) => {
     }
 
     const { id } = req.params;
+    const { provider = "elos" } = req.body;
 
     if (!id) {
       res.status(400).json({
@@ -488,16 +528,25 @@ export const getScheduleById = async (req: Request, res: Response) => {
       return;
     }
 
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
+
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
 
     console.log("Enviando requisição de detalhes do agendamento:", {
-      url: `${ELOS_URL}/Scheduler/Form/${id}`,
+      url: `${providerConfig.baseUrl}/Scheduler/Form/${id}`,
       dados: { id },
     });
 
     const response = await axios.post(
-      `${ELOS_URL}/Scheduler/Form/${id}`,
+      `${providerConfig.baseUrl}/Scheduler/Form/${id}`,
       null,
       {
         headers: {
@@ -506,11 +555,9 @@ export const getScheduleById = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -519,6 +566,8 @@ export const getScheduleById = async (req: Request, res: Response) => {
           "user-agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
           "x-requested-with": "XMLHttpRequest",
+          origin: providerConfig.baseUrl,
+          referer: `${providerConfig.baseUrl}/`,
           cookie: cookies,
         },
       }
@@ -628,6 +677,17 @@ export const getUpcomingSchedules = async (req: Request, res: Response) => {
       return;
     }
 
+    const { provider = "elos" } = req.body;
+
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
+
     // Calcular datas de início (hoje) e fim (6 meses à frente)
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
@@ -652,21 +712,19 @@ export const getUpcomingSchedules = async (req: Request, res: Response) => {
     }).toString();
 
     console.log("Enviando requisição de agendamentos:", {
-      url: `${ELOS_URL}/Scheduler/Read`,
+      url: `${providerConfig.baseUrl}/Scheduler/Read`,
       dados: { startDate: startDate.toISOString(), endDate: endDate.toISOString(), structureId },
     });
 
-    const response = await axios.post(`${ELOS_URL}/Scheduler/Read`, formData, {
+    const response = await axios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "cache-control": "no-cache",
         "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
         dnt: "1",
-        origin: ELOS_URL,
         pragma: "no-cache",
         priority: "u=1, i",
-        referer: `${ELOS_URL}/`,
         "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
@@ -676,6 +734,8 @@ export const getUpcomingSchedules = async (req: Request, res: Response) => {
         "user-agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         "x-requested-with": "XMLHttpRequest",
+        origin: providerConfig.baseUrl,
+        referer: `${providerConfig.baseUrl}/`,
         cookie: cookies,
       },
       validateStatus: function (status) {

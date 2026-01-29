@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import axios from "axios";
 import { format, parseISO } from 'date-fns';
 import { toZonedTime, format as formatTz, formatInTimeZone } from 'date-fns-tz';
-
-const ELOS_URL = "https://botoclinic.elosclub.com.br";
+import { getProvider } from '../config/providers';
+import { ProviderType } from '../types/provider';
 const TIME_ZONE = 'America/Sao_Paulo';
 
 // Função auxiliar para criar string de cookies
@@ -169,7 +169,7 @@ export const getProcedureTypes = async (req: Request, res: Response) => {
     const cookies = createCookieString(authToken, structureId);
 
     const timestamp = new Date().getTime();
-    const url = `${ELOS_URL}/Search/Get?searchTerm=&pageSize=100&pageNum=1&searchName=ItemClassifier&extraCondition=&_=${timestamp}`;
+    const url = `/Search/Get?searchTerm=&pageSize=100&pageNum=1&searchName=ItemClassifier&extraCondition=&_=${timestamp}`;
 
     console.log("Enviando requisição de tipos de procedimento:", {
       url,
@@ -181,10 +181,8 @@ export const getProcedureTypes = async (req: Request, res: Response) => {
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "cache-control": "no-cache",
         dnt: "1",
-        origin: ELOS_URL,
         pragma: "no-cache",
         priority: "u=1, i",
-        referer: `${ELOS_URL}/`,
         "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
@@ -263,6 +261,7 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
       AllowDocking = false,
       Locality_Id = "",
       SchedulingBySystem = false,
+      provider = "elos",
     } = req.body;
 
     // Validar parâmetros obrigatórios
@@ -281,6 +280,15 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
       return;
     }
 
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
+
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
 
@@ -297,12 +305,12 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
     formData.append("SchedulingBySystem", SchedulingBySystem.toString());
 
     console.log("Enviando requisição de procedimentos disponíveis:", {
-      url: `${ELOS_URL}/Scheduler/AvailabilityProcedures`,
+      url: `${providerConfig.baseUrl}/Scheduler/AvailabilityProcedures`,
       dados: req.body,
     });
 
     const response = await axios.post(
-      `${ELOS_URL}/Scheduler/AvailabilityProcedures`,
+      `${providerConfig.baseUrl}/Scheduler/AvailabilityProcedures`,
       formData,
       {
         headers: {
@@ -311,11 +319,9 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-          origin: ELOS_URL,
-          pragma: "no-cache",
+            pragma: "no-cache",
           priority: "u=1, i",
-          referer: `${ELOS_URL}/`,
-          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+            "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -324,6 +330,8 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
           "user-agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
           "x-requested-with": "XMLHttpRequest",
+          origin: providerConfig.baseUrl,
+          referer: `${providerConfig.baseUrl}/`,
           cookie: cookies,
         },
       }
@@ -389,9 +397,9 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
     }
 
     // Obter parâmetros do corpo da requisição
-    const { date, procedureName, statusName } = req.body;
+    const { date, procedureName, statusName, provider = "elos" } = req.body;
 
-    console.log(`[getDailyProcedures] Parâmetros recebidos:`, { date, procedureName, statusName });
+    console.log(`[getDailyProcedures] Parâmetros recebidos:`, { date, procedureName, statusName, provider });
 
     if (!date) {
       res.status(400).json({
@@ -409,6 +417,16 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
       });
       return;
     }
+
+    // Validar provider
+    if (!['elos', 'evup'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+      return;
+    }
+
+    // Obter configuração do provider
+    const providerConfig = getProvider(provider as ProviderType);
+    console.log(`[getDailyProcedures] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
     
     // Formato exato igual ao que a API Elos espera
     const startDate = `${date}T03:00:00.000Z`;
@@ -436,21 +454,19 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
     }).toString();
 
     console.log("Enviando requisição de procedimentos diários:", {
-      url: `${ELOS_URL}/Scheduler/Read`,
+      url: `${providerConfig.baseUrl}/Scheduler/Read`,
       dados: { startDate, endDate, structureId }
     });
 
-    const response = await axios.post(`${ELOS_URL}/Scheduler/Read`, formData, {
+    const response = await axios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "cache-control": "no-cache",
         "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
         dnt: "1",
-        origin: ELOS_URL,
         pragma: "no-cache",
         priority: "u=1, i",
-        referer: `${ELOS_URL}/`,
         "sec-ch-ua": '"Chromium";v="135", "Not-A.Brand";v="8"',
         "sec-ch-ua-mobile": "?1",
         "sec-ch-ua-platform": '"Android"',
@@ -459,6 +475,8 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
         "sec-fetch-site": "same-origin",
         "user-agent": "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Mobile Safari/537.36",
         "x-requested-with": "XMLHttpRequest",
+        origin: providerConfig.baseUrl,
+        referer: `${providerConfig.baseUrl}/`,
         cookie: cookies,
       },
       validateStatus: function (status) {
@@ -639,7 +657,7 @@ export const getAllProcedures = async (req: Request, res: Response) => {
     const cookies = createCookieString(authToken, structureId);
 
     const timestamp = new Date().getTime();
-    const url = `${ELOS_URL}/Search/Get?searchTerm=${searchTerm}&pageSize=${pageSize}&pageNum=${pageNum}&searchName=ServiceItem&extraCondition=&_=${timestamp}`;
+    const url = `/Search/Get?searchTerm=${searchTerm}&pageSize=${pageSize}&pageNum=${pageNum}&searchName=ServiceItem&extraCondition=&_=${timestamp}`;
 
     console.log("Enviando requisição para listar procedimentos:", {
       url,
@@ -651,10 +669,8 @@ export const getAllProcedures = async (req: Request, res: Response) => {
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "cache-control": "no-cache",
         dnt: "1",
-        origin: ELOS_URL,
         pragma: "no-cache",
         priority: "u=1, i",
-        referer: `${ELOS_URL}/`,
         "sec-ch-ua": '"Chromium";v="135", "Not-A.Brand";v="8"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"macOS"',
