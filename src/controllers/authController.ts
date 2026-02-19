@@ -50,8 +50,8 @@ export const login = async (
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 

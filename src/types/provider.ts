@@ -1,10 +1,11 @@
-export type ProviderType = 'elos' | 'evup';
+export type ProviderType = 'elos' | 'evup' | 'botosense';
 
 export interface ProviderConfig {
   name: string;
   baseUrl: string;
   loginPath: string;
   timezone: string;
+  defaultStructureId: string;
 }
 
 export interface ProvidersConfig {
@@ -12,5 +13,6 @@ export interface ProvidersConfig {
   providers: {
     elos: ProviderConfig;
     evup: ProviderConfig;
+    botosense: ProviderConfig;
   };
 }

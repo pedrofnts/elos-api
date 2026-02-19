@@ -242,8 +242,6 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId =
-      (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -281,13 +279,14 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -389,7 +388,6 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId = (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -419,13 +417,14 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
     console.log(`[getDailyProcedures] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
     
     // Formato exato igual ao que a API Elos espera

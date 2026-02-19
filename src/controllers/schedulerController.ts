@@ -28,8 +28,6 @@ export const getSchedules = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId =
-      (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -60,13 +58,14 @@ export const getSchedules = async (req: Request, res: Response) => {
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
     console.log(`[getSchedules] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
 
     // Criar a string de cookies
@@ -143,8 +142,6 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId =
-      (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -178,13 +175,14 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -282,8 +280,6 @@ export const submitAvailability = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId =
-      (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -303,13 +299,14 @@ export const submitAvailability = async (req: Request, res: Response) => {
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -408,8 +405,6 @@ export const updateStatus = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId =
-      (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -429,13 +424,14 @@ export const updateStatus = async (req: Request, res: Response) => {
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -510,7 +506,6 @@ export const getScheduleById = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId = (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -529,13 +524,14 @@ export const getScheduleById = async (req: Request, res: Response) => {
     }
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
     const cookies = createCookieString(authToken, structureId);
@@ -670,7 +666,6 @@ export const getUpcomingSchedules = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId = (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -680,13 +675,14 @@ export const getUpcomingSchedules = async (req: Request, res: Response) => {
     const { provider = "elos" } = req.body;
 
     // Validar provider
-    if (!['elos', 'evup'].includes(provider)) {
-      res.status(400).json({ error: "Provider inválido. Use 'elos' ou 'evup'" });
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
       return;
     }
 
     // Obter configuração do provider
     const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Calcular datas de início (hoje) e fim (6 meses à frente)
     const startDate = new Date();
