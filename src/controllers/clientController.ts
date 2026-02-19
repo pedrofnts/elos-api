@@ -3,6 +3,8 @@ import axios from "axios";
 import { format as formatTz, parseISO } from 'date-fns';
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import apiClient from '../services/apiClient';
+import { getProvider } from '../config/providers';
+import { ProviderType } from '../types/provider';
 const TIME_ZONE = 'America/Sao_Paulo';
 
 // Função auxiliar para criar string de cookies
@@ -360,7 +362,6 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId = (req.headers["x-organization-structure"] as string) || "58";
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -368,7 +369,15 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
     }
 
     // Obter parâmetros do corpo da requisição
-    const { date } = req.body;
+    const { date, provider = "elos" } = req.body;
+
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
+      return;
+    }
+
+    const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Validar parâmetros obrigatórios
     if (!date) {
@@ -411,14 +420,14 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
       ReportId: "5",
       ReportDetailPeriodId: "2",
       "Filters[0].Field": "Field4268",
-      "Filters[0].Placeholder": "[[DATA]]",
+      "Filters[0].Placeholder": "EXECUCAO",
       "Filters[0].Type": "date",
       "Filters[0].Value1": formattedDate,
       "Filters[0].Value2": formattedDate,
     }).toString();
 
-    const response = await apiClient.post(
-      `/Report/Custom/List`,
+    const response = await axios.post(
+      `${providerConfig.baseUrl}/Report/Custom/List`,
       formData,
       {
         headers: {
@@ -427,9 +436,9 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
           "cache-control": "no-cache",
           "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
           dnt: "1",
-            pragma: "no-cache",
+          pragma: "no-cache",
           priority: "u=1, i",
-            "sec-ch-ua": '"Chromium";v="135", "Not-A.Brand";v="8"',
+          "sec-ch-ua": '"Chromium";v="135", "Not-A.Brand";v="8"',
           "sec-ch-ua-mobile": "?0",
           "sec-ch-ua-platform": '"macOS"',
           "sec-fetch-dest": "empty",
@@ -438,6 +447,8 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
           "user-agent":
             "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
           "x-requested-with": "XMLHttpRequest",
+          origin: providerConfig.baseUrl,
+          referer: `${providerConfig.baseUrl}/`,
           cookie: cookies,
         },
       }
