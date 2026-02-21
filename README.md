@@ -26,6 +26,20 @@ npm run dev
 npm run start
 ```
 
+## Documentação da API (Swagger)
+
+A documentação interativa da API está disponível através do Swagger UI.
+
+Após iniciar a API, acesse:
+
+- **Swagger UI**: http://localhost:3000/api-docs
+
+O Swagger UI permite:
+- Visualizar todos os endpoints disponíveis
+- Testar as requisições diretamente pela interface
+- Ver os modelos de request/response
+- Entender os parâmetros necessários para cada endpoint
+
 ## Estrutura do Projeto
 
 ```
