@@ -157,8 +157,16 @@ export const getProcedureTypes = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
+    const provider = (req.query.provider as string) || "elos";
+
+    if (!["elos", "evup", "botosense"].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
+      return;
+    }
+
+    const providerConfig = getProvider(provider as ProviderType);
     const structureId =
-      (req.headers["x-organization-structure"] as string) || "58";
+      (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -169,7 +177,7 @@ export const getProcedureTypes = async (req: Request, res: Response) => {
     const cookies = createCookieString(authToken, structureId);
 
     const timestamp = new Date().getTime();
-    const url = `/Search/Get?searchTerm=&pageSize=100&pageNum=1&searchName=ItemClassifier&extraCondition=&_=${timestamp}`;
+    const url = `${providerConfig.baseUrl}/Search/Get?searchTerm=&pageSize=100&pageNum=1&searchName=ItemClassifier&extraCondition=&_=${timestamp}`;
 
     console.log("Enviando requisição de tipos de procedimento:", {
       url,
@@ -640,7 +648,15 @@ export const getAllProcedures = async (req: Request, res: Response) => {
     });
 
     const authToken = req.headers.authorization?.split(" ")[1];
-    const structureId = (req.headers["x-organization-structure"] as string) || "58";
+    const provider = (req.query.provider as string) || "elos";
+
+    if (!["elos", "evup", "botosense"].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
+      return;
+    }
+
+    const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     if (!authToken) {
       res.status(401).json({ error: "Token não fornecido" });
@@ -656,7 +672,7 @@ export const getAllProcedures = async (req: Request, res: Response) => {
     const cookies = createCookieString(authToken, structureId);
 
     const timestamp = new Date().getTime();
-    const url = `/Search/Get?searchTerm=${searchTerm}&pageSize=${pageSize}&pageNum=${pageNum}&searchName=ServiceItem&extraCondition=&_=${timestamp}`;
+    const url = `${providerConfig.baseUrl}/Search/Get?searchTerm=${searchTerm}&pageSize=${pageSize}&pageNum=${pageNum}&searchName=ServiceItem&extraCondition=&_=${timestamp}`;
 
     console.log("Enviando requisição para listar procedimentos:", {
       url,

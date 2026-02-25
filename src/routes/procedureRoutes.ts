@@ -9,9 +9,21 @@ const router = Router();
  *   get:
  *     summary: Busca tipos de procedimento
  *     tags: [Procedimentos]
+ *     parameters:
+ *       - in: query
+ *         name: provider
+ *         schema:
+ *           type: string
+ *           enum: [elos, evup, botosense]
+ *           default: elos
+ *         description: Provider a ser utilizado
  *     responses:
  *       200:
  *         description: Lista de tipos de procedimento
+ *       400:
+ *         description: Provider inválido
+ *       401:
+ *         description: Token não fornecido ou inválido
  */
 router.get("/types", procedureController.getProcedureTypes);
 
@@ -21,9 +33,21 @@ router.get("/types", procedureController.getProcedureTypes);
  *   get:
  *     summary: Lista todos os procedimentos
  *     tags: [Procedimentos]
+ *     parameters:
+ *       - in: query
+ *         name: provider
+ *         schema:
+ *           type: string
+ *           enum: [elos, evup, botosense]
+ *           default: elos
+ *         description: Provider a ser utilizado
  *     responses:
  *       200:
  *         description: Lista de todos os procedimentos
+ *       400:
+ *         description: Provider inválido
+ *       401:
+ *         description: Token não fornecido ou inválido
  */
 router.get("/list", procedureController.getAllProcedures);
 
