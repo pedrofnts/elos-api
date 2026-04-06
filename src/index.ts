@@ -31,12 +31,12 @@ const providerRateLimit = rateLimit({
   max: 100,
   keyGenerator: (req: Request) => {
     const provider = req.body?.provider || (req.query?.provider as string) || 'elos';
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const ip = normalizeIp(req.ip || req.socket.remoteAddress || 'unknown');
     return `${provider}:${ip}`;
   },
   handler: (req: Request, res) => {
     const provider = req.body?.provider || (req.query?.provider as string) || 'elos';
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const ip = normalizeIp(req.ip || req.socket.remoteAddress || 'unknown');
     console.warn(`[RATE LIMIT] Provider: ${provider} | IP: ${ip} | ${req.method} ${req.path}`);
     res.status(429).json({
       error: 'Too Many Requests',
@@ -47,9 +47,13 @@ const providerRateLimit = rateLimit({
 
 app.use('/api', providerRateLimit);
 
+// Normaliza IPv4-mapped IPv6 (::ffff:127.0.0.1 → 127.0.0.1)
+const normalizeIp = (ip: string) => ip.replace(/^::ffff:/, '');
+
 // Middleware para logar todas as requisições
 app.use((req, res, next) => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const raw = req.ip || req.socket.remoteAddress || 'unknown';
+  const ip = normalizeIp(raw);
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} | IP: ${ip}`);
   next();
 });
