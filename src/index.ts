@@ -2,8 +2,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import express from "express";
+import express, { Request } from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import swaggerUi from "swagger-ui-express";
 import schedulerRoutes from "./routes/schedulerRoutes";
 import clientRoutes from "./routes/clientRoutes";
@@ -17,15 +18,39 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
 
 // Swagger
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Rate limit por provider (100 req/min por provider+IP)
+const providerRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  keyGenerator: (req: Request) => {
+    const provider = req.body?.provider || (req.query?.provider as string) || 'elos';
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    return `${provider}:${ip}`;
+  },
+  handler: (req: Request, res) => {
+    const provider = req.body?.provider || (req.query?.provider as string) || 'elos';
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    console.warn(`[RATE LIMIT] Provider: ${provider} | IP: ${ip} | ${req.method} ${req.path}`);
+    res.status(429).json({
+      error: 'Too Many Requests',
+      message: `Rate limit excedido para o provider "${provider}". Tente novamente em 1 minuto.`,
+    });
+  },
+});
+
+app.use('/api', providerRateLimit);
+
 // Middleware para logar todas as requisições
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} | IP: ${ip}`);
   next();
 });
 
