@@ -28,7 +28,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Rate limit por provider (100 req/min por provider+IP)
 const providerRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
+  max: 300,
   keyGenerator: (req: Request) => {
     const provider = req.body?.provider || (req.query?.provider as string) || 'elos';
     const ip = normalizeIp(req.ip || req.socket.remoteAddress || 'unknown');
@@ -54,7 +54,9 @@ const normalizeIp = (ip: string) => ip.replace(/^::ffff:/, '');
 app.use((req, res, next) => {
   const raw = req.ip || req.socket.remoteAddress || 'unknown';
   const ip = normalizeIp(raw);
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} | IP: ${ip}`);
+  const forwarded = req.headers['x-forwarded-for'];
+  const realIp = forwarded ? String(forwarded).split(',')[0].trim() : ip;
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} | IP: ${realIp}`);
   next();
 });
 
