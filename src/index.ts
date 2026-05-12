@@ -11,6 +11,7 @@ import clientRoutes from "./routes/clientRoutes";
 import procedureRoutes from "./routes/procedureRoutes";
 import organizationalStructureRoutes from "./routes/organizationalStructureRoutes";
 import authRoutes from "./routes/authRoutes";
+import leadRoutes from "./routes/leadRoutes";
 import { getCurrentProvider } from './config/providers';
 import { swaggerSpec } from './config/swagger';
 
@@ -66,6 +67,7 @@ app.use("/api/scheduler", schedulerRoutes);
 app.use("/api/clients", clientRoutes);
 app.use("/api/procedures", procedureRoutes);
 app.use("/api/organizational-structures", organizationalStructureRoutes);
+app.use("/api/leads", leadRoutes);
 
 /**
  * @swagger
