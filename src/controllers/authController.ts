@@ -1,17 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import { getProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 
-const getProxyConfig = () => {
+const getProxyAgent = (): HttpsProxyAgent<string> | undefined => {
   const { PROXY_HOST, PROXY_PORT, PROXY_USER, PROXY_PASS } = process.env;
   if (!PROXY_HOST || !PROXY_PORT) return undefined;
-  return {
-    host: PROXY_HOST,
-    port: parseInt(PROXY_PORT, 10),
-    auth: PROXY_USER && PROXY_PASS ? { username: PROXY_USER, password: PROXY_PASS } : undefined,
-  };
+  const auth = PROXY_USER && PROXY_PASS ? `${PROXY_USER}:${PROXY_PASS}@` : "";
+  return new HttpsProxyAgent(`http://${auth}${PROXY_HOST}:${PROXY_PORT}`);
 };
 
 const BROWSER_HEADERS = {
@@ -24,11 +22,11 @@ const BROWSER_HEADERS = {
 };
 
 // Retorna o token de verificação e os cookies da sessão (incluindo cookies do Cloudflare)
-const getRequestVerificationToken = async (baseUrl: string): Promise<{ token: string; sessionCookies: string }> => {
+const getRequestVerificationToken = async (baseUrl: string, proxyAgent?: HttpsProxyAgent<string>): Promise<{ token: string; sessionCookies: string }> => {
   try {
     const response = await axios.get(`${baseUrl}/Login`, {
       headers: BROWSER_HEADERS,
-      proxy: getProxyConfig(),
+      ...(proxyAgent ? { httpsAgent: proxyAgent, proxy: false } : {}),
     });
     const $ = cheerio.load(response.data);
     const token = $('input[name="__RequestVerificationToken"]').val() as string;
@@ -87,8 +85,10 @@ export const login = async (
     providerConfig = getProvider(provider as ProviderType);
     console.log(`[login] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
 
+    const proxyAgent = getProxyAgent();
+
     // Obter o token de verificação e cookies da sessão (incluindo cookies do Cloudflare)
-    const { token, sessionCookies } = await getRequestVerificationToken(providerConfig.baseUrl);
+    const { token, sessionCookies } = await getRequestVerificationToken(providerConfig.baseUrl, proxyAgent);
     console.log("Token de verificação obtido com sucesso");
 
     // Preparar dados do fingerprint
@@ -120,7 +120,7 @@ export const login = async (
       },
       maxRedirects: 0,
       validateStatus: (status) => status >= 200 && status < 400,
-      proxy: getProxyConfig(),
+      ...(proxyAgent ? { httpsAgent: proxyAgent, proxy: false } : {}),
     });
 
     // Verificar se o login foi bem-sucedido
