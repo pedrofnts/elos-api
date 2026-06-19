@@ -5,7 +5,7 @@ import { HttpsProxyAgent } from "https-proxy-agent";
 import { getProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 
-const getProxyAgent = (): HttpsProxyAgent<string> | undefined => {
+const getProxyAgent = (): HttpsProxyAgent | undefined => {
   const { PROXY_HOST, PROXY_PORT, PROXY_USER, PROXY_PASS } = process.env;
   if (!PROXY_HOST || !PROXY_PORT) return undefined;
   const auth = PROXY_USER && PROXY_PASS ? `${PROXY_USER}:${PROXY_PASS}@` : "";
@@ -22,7 +22,7 @@ const BROWSER_HEADERS = {
 };
 
 // Retorna o token de verificação e os cookies da sessão (incluindo cookies do Cloudflare)
-const getRequestVerificationToken = async (baseUrl: string, proxyAgent?: HttpsProxyAgent<string>): Promise<{ token: string; sessionCookies: string }> => {
+const getRequestVerificationToken = async (baseUrl: string, proxyAgent?: HttpsProxyAgent): Promise<{ token: string; sessionCookies: string }> => {
   try {
     const response = await axios.get(`${baseUrl}/Login`, {
       headers: BROWSER_HEADERS,
