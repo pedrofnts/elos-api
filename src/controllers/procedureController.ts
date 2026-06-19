@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import axios from "axios";
+import { proxiedAxios } from '../services/apiClient';
 import { format, parseISO } from 'date-fns';
 import { toZonedTime, format as formatTz, formatInTimeZone } from 'date-fns-tz';
 import { getProvider } from '../config/providers';
@@ -183,7 +184,7 @@ export const getProcedureTypes = async (req: Request, res: Response) => {
       url,
     });
 
-    const response = await axios.get(url, {
+    const response = await proxiedAxios.get(url, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -316,7 +317,7 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
       dados: req.body,
     });
 
-    const response = await axios.post(
+    const response = await proxiedAxios.post(
       `${providerConfig.baseUrl}/Scheduler/AvailabilityProcedures`,
       formData,
       {
@@ -465,7 +466,7 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
       dados: { startDate, endDate, structureId }
     });
 
-    const response = await axios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
+    const response = await proxiedAxios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -678,7 +679,7 @@ export const getAllProcedures = async (req: Request, res: Response) => {
       url,
     });
 
-    const response = await axios.get(url, {
+    const response = await proxiedAxios.get(url, {
       headers: {
         accept: "application/json, text/javascript, */*; q=0.01",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",

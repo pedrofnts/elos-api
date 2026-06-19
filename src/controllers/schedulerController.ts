@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import axios from "axios";
+import { proxiedAxios } from '../services/apiClient';
 import { getProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 
@@ -89,7 +90,7 @@ export const getSchedules = async (req: Request, res: Response) => {
       dados: { start, end, structureId },
     });
 
-    const response = await axios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
+    const response = await proxiedAxios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -221,7 +222,7 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
       dados: req.body,
     });
 
-    const response = await axios.post(
+    const response = await proxiedAxios.post(
       `${providerConfig.baseUrl}/Scheduler/AvailabilityPeriods`,
       formData,
       {
@@ -348,7 +349,7 @@ export const submitAvailability = async (req: Request, res: Response) => {
       dados: { model, selected },
     });
 
-    const response = await axios.post(
+    const response = await proxiedAxios.post(
       `${providerConfig.baseUrl}/Scheduler/SubmitAvailability`,
       formData,
       {
@@ -449,7 +450,7 @@ export const updateStatus = async (req: Request, res: Response) => {
       dados: { id, status, ignoreReleaseValidation, observations },
     });
 
-    const response = await axios.post(
+    const response = await proxiedAxios.post(
       `${providerConfig.baseUrl}/Scheduler/UpdateStatus`,
       formData,
       {
@@ -541,7 +542,7 @@ export const getScheduleById = async (req: Request, res: Response) => {
       dados: { id },
     });
 
-    const response = await axios.post(
+    const response = await proxiedAxios.post(
       `${providerConfig.baseUrl}/Scheduler/Form/${id}`,
       null,
       {
@@ -712,7 +713,7 @@ export const getUpcomingSchedules = async (req: Request, res: Response) => {
       dados: { startDate: startDate.toISOString(), endDate: endDate.toISOString(), structureId },
     });
 
-    const response = await axios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
+    const response = await proxiedAxios.post(`${providerConfig.baseUrl}/Scheduler/Read`, formData, {
       headers: {
         accept: "*/*",
         "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",

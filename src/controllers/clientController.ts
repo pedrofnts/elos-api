@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import axios from "axios";
 import { format as formatTz, parseISO } from 'date-fns';
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
-import apiClient from '../services/apiClient';
+import apiClient, { proxiedAxios } from '../services/apiClient';
 import { getProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 const TIME_ZONE = 'America/Sao_Paulo';
@@ -426,7 +426,7 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
       "Filters[0].Value2": formattedDate,
     }).toString();
 
-    const response = await axios.post(
+    const response = await proxiedAxios.post(
       `${providerConfig.baseUrl}/Report/Custom/List`,
       formData,
       {

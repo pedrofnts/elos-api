@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import axios from "axios";
-import apiClient from '../services/apiClient';
+import apiClient, { proxiedAxios } from '../services/apiClient';
 
 // Função auxiliar para criar string de cookies
 const createCookieString = (authToken: string, structureId: string = "58") => {
@@ -156,7 +156,7 @@ export const setCurrentOrganizationalStructure = async (
 
     // Esta requisição é feita para obter os detalhes da estrutura selecionada
     // Equivalente ao que acontece na interface web ao selecionar uma nova unidade
-    const response = await axios.get(
+    const response = await proxiedAxios.get(
       `/OrganizationalStructure/GetByIdWithConfigurationsForDomain?id=${structureId}`,
       {
         headers: {

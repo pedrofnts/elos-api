@@ -81,3 +81,9 @@ class ApiClient {
 // Export singleton instance
 export const apiClient = new ApiClient();
 export default apiClient;
+
+// Axios instance com proxy configurado para uso direto nos controllers
+export const proxiedAxios = axios.create({
+  timeout: 30000,
+  ...((() => { const a = getProxyAgent(); return a ? { httpsAgent: a, proxy: false } : {}; })()),
+});
