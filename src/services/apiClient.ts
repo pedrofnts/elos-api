@@ -1,14 +1,24 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 import { getCurrentProvider } from '../config/providers';
+
+const getProxyAgent = (): HttpsProxyAgent | undefined => {
+  const { PROXY_HOST, PROXY_PORT, PROXY_USER, PROXY_PASS } = process.env;
+  if (!PROXY_HOST || !PROXY_PORT) return undefined;
+  const auth = PROXY_USER && PROXY_PASS ? `${PROXY_USER}:${PROXY_PASS}@` : "";
+  return new HttpsProxyAgent(`http://${auth}${PROXY_HOST}:${PROXY_PORT}`);
+};
 
 class ApiClient {
   private axiosInstance: AxiosInstance;
   private provider = getCurrentProvider();
 
   constructor() {
+    const proxyAgent = getProxyAgent();
     this.axiosInstance = axios.create({
       baseURL: this.provider.baseUrl,
       timeout: 30000,
+      ...(proxyAgent ? { httpsAgent: proxyAgent, proxy: false } : {}),
     });
 
     // Request interceptor - normalize URLs and add headers
