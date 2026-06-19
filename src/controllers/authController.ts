@@ -4,10 +4,32 @@ import * as cheerio from "cheerio";
 import { getProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 
-// Função para obter o token de verificação
-const getRequestVerificationToken = async (baseUrl: string): Promise<string> => {
+const getProxyConfig = () => {
+  const { PROXY_HOST, PROXY_PORT, PROXY_USER, PROXY_PASS } = process.env;
+  if (!PROXY_HOST || !PROXY_PORT) return undefined;
+  return {
+    host: PROXY_HOST,
+    port: parseInt(PROXY_PORT, 10),
+    auth: PROXY_USER && PROXY_PASS ? { username: PROXY_USER, password: PROXY_PASS } : undefined,
+  };
+};
+
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Connection": "keep-alive",
+  "Upgrade-Insecure-Requests": "1",
+};
+
+// Retorna o token de verificação e os cookies da sessão (incluindo cookies do Cloudflare)
+const getRequestVerificationToken = async (baseUrl: string): Promise<{ token: string; sessionCookies: string }> => {
   try {
-    const response = await axios.get(`${baseUrl}/Login`);
+    const response = await axios.get(`${baseUrl}/Login`, {
+      headers: BROWSER_HEADERS,
+      proxy: getProxyConfig(),
+    });
     const $ = cheerio.load(response.data);
     const token = $('input[name="__RequestVerificationToken"]').val() as string;
 
@@ -15,7 +37,13 @@ const getRequestVerificationToken = async (baseUrl: string): Promise<string> => 
       throw new Error("Token de verificação não encontrado");
     }
 
-    return token;
+    // Preservar todos os cookies retornados (cf_bm, cf_clearance, ASP.NET session, etc.)
+    const rawCookies: string[] = response.headers["set-cookie"] ?? [];
+    const sessionCookies = rawCookies
+      .map((c) => c.split(";")[0])
+      .join("; ");
+
+    return { token, sessionCookies };
   } catch (error) {
     console.error("Erro ao obter token de verificação:", error);
     throw error;
@@ -59,8 +87,8 @@ export const login = async (
     providerConfig = getProvider(provider as ProviderType);
     console.log(`[login] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
 
-    // Obter o token de verificação
-    const token = await getRequestVerificationToken(providerConfig.baseUrl);
+    // Obter o token de verificação e cookies da sessão (incluindo cookies do Cloudflare)
+    const { token, sessionCookies } = await getRequestVerificationToken(providerConfig.baseUrl);
     console.log("Token de verificação obtido com sucesso");
 
     // Preparar dados do fingerprint
@@ -68,7 +96,7 @@ export const login = async (
       OS: "OS X",
       BrowserName: "Chrome",
       BrowserInfo: "135.0.0.0 - 64 bits",
-      IpAddress: "127.0.0.1", // O IP real será determinado pelo servidor
+      IpAddress: "127.0.0.1",
     };
 
     // Preparar dados para a requisição de login
@@ -81,17 +109,18 @@ export const login = async (
       RememberMe: "false",
     });
 
-    // Fazer a requisição de login
+    // Fazer a requisição de login propagando os cookies da sessão anterior
     const loginResponse = await axios.post(`${providerConfig.baseUrl}/Login`, formData, {
       headers: {
+        ...BROWSER_HEADERS,
         "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "Referer": `${providerConfig.baseUrl}/Login`,
         "Origin": providerConfig.baseUrl,
+        ...(sessionCookies ? { "Cookie": sessionCookies } : {}),
       },
       maxRedirects: 0,
       validateStatus: (status) => status >= 200 && status < 400,
+      proxy: getProxyConfig(),
     });
 
     // Verificar se o login foi bem-sucedido
