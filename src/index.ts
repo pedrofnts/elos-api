@@ -61,6 +61,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Bloqueia temporariamente o provider botosense
+app.use('/api', (req, res, next) => {
+  const provider = req.body?.provider || (req.query?.provider as string);
+  if (provider === 'botosense') {
+    res.status(503).json({ error: "Provider 'botosense' temporariamente desativado" });
+    return;
+  }
+  next();
+});
+
 // Rotas
 app.use("/api/auth", authRoutes);
 app.use("/api/scheduler", schedulerRoutes);
