@@ -312,4 +312,43 @@ router.get("/upcoming", schedulerController.getUpcomingSchedules);
  */
 router.get("/:id", schedulerController.getScheduleById);
 
+/**
+ * @swagger
+ * /api/scheduler/{id}/history:
+ *   post:
+ *     summary: Busca histórico de mudanças de um agendamento
+ *     tags: [Agendamentos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID do agendamento
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               page:
+ *                 type: integer
+ *                 default: 1
+ *               pageSize:
+ *                 type: integer
+ *                 default: 100
+ *               provider:
+ *                 type: string
+ *                 enum: [elos, evup, botosense]
+ *                 default: elos
+ *     responses:
+ *       200:
+ *         description: Histórico do agendamento com CreateDate, StatusDescription e CreateUser_Name por entrada
+ *       400:
+ *         description: ID não fornecido
+ *       401:
+ *         description: Token não fornecido ou inválido
+ */
+router.post("/:id/history", schedulerController.getScheduleHistory);
+
 export default router;

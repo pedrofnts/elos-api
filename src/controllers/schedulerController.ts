@@ -655,6 +655,82 @@ export const getScheduleById = async (req: Request, res: Response) => {
   }
 };
 
+// Função para buscar histórico de um agendamento por ID
+export const getScheduleHistory = async (req: Request, res: Response) => {
+  try {
+    const authToken = req.headers.authorization?.split(" ")[1];
+
+    if (!authToken) {
+      res.status(401).json({ error: "Token não fornecido" });
+      return;
+    }
+
+    const { id } = req.params;
+    const { sort = "", page = 1, pageSize = 100, group = "", filter = "", provider = "elos" } = req.body;
+
+    if (!id) {
+      res.status(400).json({ error: "ID do agendamento não fornecido" });
+      return;
+    }
+
+    if (!['elos', 'evup', 'botosense'].includes(provider)) {
+      res.status(400).json({ error: "Provider inválido. Use 'elos', 'evup' ou 'botosense'" });
+      return;
+    }
+
+    const providerConfig = getProvider(provider as ProviderType);
+    const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
+    const cookies = createCookieString(authToken, structureId);
+
+    const formData = new URLSearchParams({
+      sort: sort.toString(),
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+      group: group.toString(),
+      filter: filter.toString(),
+      id: id.toString(),
+    }).toString();
+
+    const response = await proxiedAxios.post(
+      `${providerConfig.baseUrl}/Scheduler/ListHistory`,
+      formData,
+      {
+        headers: {
+          accept: "*/*",
+          "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+          "cache-control": "no-cache",
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+          dnt: "1",
+          pragma: "no-cache",
+          priority: "u=1, i",
+          "sec-ch-ua": '"Not:A-Brand";v="24", "Chromium";v="134"',
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": '"macOS"',
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-origin",
+          "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+          "x-requested-with": "XMLHttpRequest",
+          origin: providerConfig.baseUrl,
+          referer: `${providerConfig.baseUrl}/`,
+          cookie: cookies,
+        },
+      }
+    );
+
+    res.json(response.data);
+  } catch (error) {
+    console.error("Erro ao buscar histórico do agendamento:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Detalhes do erro:", {
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+    }
+    res.status(500).json({ error: "Erro ao buscar histórico do agendamento" });
+  }
+};
+
 // Função para buscar agendamentos dos próximos 6 meses
 export const getUpcomingSchedules = async (req: Request, res: Response) => {
   try {
