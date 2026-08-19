@@ -3,12 +3,27 @@ import axios from "axios";
 import { format as formatTz, parseISO } from 'date-fns';
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import apiClient, { proxiedAxios } from '../services/apiClient';
-import { getProvider } from '../config/providers';
+import { getProvider, getCurrentProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 const TIME_ZONE = 'America/Sao_Paulo';
 
-// Função auxiliar para criar string de cookies
-const createCookieString = (authToken: string, structureId: string = "58") => {
+// Deriva o tenant a partir do subdomínio do baseUrl (ex: botoclinic.elosclub.com.br -> "botoclinic")
+const getTenant = (baseUrl: string): string | undefined => {
+  try {
+    return new URL(baseUrl).hostname.split(".")[0];
+  } catch {
+    return undefined;
+  }
+};
+
+// Função auxiliar para criar string de cookies.
+// O provider valida o cookie de autenticação com sufixo do tenant (ex: "Authentication_botoclinic").
+const createCookieString = (
+  authToken: string,
+  structureId: string = "58",
+  baseUrl: string = getCurrentProvider().baseUrl
+) => {
+  const tenant = getTenant(baseUrl);
   return [
     `tz=America%2FMaceio`,
     `slot-routing-url=-`,
@@ -16,6 +31,7 @@ const createCookieString = (authToken: string, structureId: string = "58") => {
     `_ga=GA1.1.1853101631.1733855667`,
     `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
     `Authentication=${authToken}`,
+    ...(tenant ? [`Authentication_${tenant}=${authToken}`] : []),
   ].join("; ");
 };
 
@@ -396,6 +412,7 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
     const formattedDate = `${day}/${month}/${year}`;
 
     // Criar a string de cookies com o ID da organização fornecido
+    const birthdayTenant = getTenant(providerConfig.baseUrl);
     const cookies = [
       `tz=America%2FMaceio`,
       `slot-routing-url=-`,
@@ -404,6 +421,7 @@ export const getBirthdaysByDate = async (req: Request, res: Response) => {
       `_ga=GA1.1.1853101631.1733855667`,
       `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
       `Authentication=${authToken}`,
+      ...(birthdayTenant ? [`Authentication_${birthdayTenant}=${authToken}`] : []),
     ].join("; ");
 
     console.log("Enviando requisição de aniversariantes do dia:", {
@@ -523,6 +541,7 @@ export const getAllClientsByUnit = async (req: Request, res: Response) => {
     const finalDate = "12/05/2025";
 
     // Montar cookies com o id da unidade - garantindo que não tenha espaço no valor
+    const unitTenant = getTenant(getCurrentProvider().baseUrl);
     const cookies = [
       `tz=America%2FMaceio`,
       `slot-routing-url=-`,
@@ -530,6 +549,7 @@ export const getAllClientsByUnit = async (req: Request, res: Response) => {
       `_ga=GA1.1.1853101631.1733855667`,
       `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
       `Authentication=${authToken}`,
+      ...(unitTenant ? [`Authentication_${unitTenant}=${authToken}`] : []),
     ].join("; ");
 
     console.log("[getAllClientsByUnit] ID da estrutura:", structureId);

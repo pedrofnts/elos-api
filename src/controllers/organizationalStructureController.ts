@@ -1,9 +1,25 @@
 import { Request, Response } from "express";
 import axios from "axios";
 import apiClient, { proxiedAxios } from '../services/apiClient';
+import { getCurrentProvider } from '../config/providers';
 
-// Função auxiliar para criar string de cookies
-const createCookieString = (authToken: string, structureId: string = "58") => {
+// Deriva o tenant a partir do subdomínio do baseUrl (ex: botoclinic.elosclub.com.br -> "botoclinic")
+const getTenant = (baseUrl: string): string | undefined => {
+  try {
+    return new URL(baseUrl).hostname.split(".")[0];
+  } catch {
+    return undefined;
+  }
+};
+
+// Função auxiliar para criar string de cookies.
+// O provider valida o cookie de autenticação com sufixo do tenant (ex: "Authentication_botoclinic").
+const createCookieString = (
+  authToken: string,
+  structureId: string = "58",
+  baseUrl: string = getCurrentProvider().baseUrl
+) => {
+  const tenant = getTenant(baseUrl);
   return [
     `tz=America%2FMaceio`,
     `slot-routing-url=-`,
@@ -11,6 +27,7 @@ const createCookieString = (authToken: string, structureId: string = "58") => {
     `_ga=GA1.1.1853101631.1733855667`,
     `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
     `Authentication=${authToken}`,
+    ...(tenant ? [`Authentication_${tenant}=${authToken}`] : []),
   ].join("; ");
 };
 
@@ -137,12 +154,14 @@ export const setCurrentOrganizationalStructure = async (
 
     // Criar a string de cookies
     // Já incluindo a nova estrutura no cookie
+    const tenant = getTenant(getCurrentProvider().baseUrl);
     const cookies = [
       `tz=America%2FMaceio`,
       `slot-routing-url=-`,
       `_ga=GA1.1.1853101631.1733855667`,
       `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
       `Authentication=${authToken}`,
+      ...(tenant ? [`Authentication_${tenant}=${authToken}`] : []),
       `current-organizational-structure=${structureId}`,
     ].join("; ");
 

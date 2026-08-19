@@ -7,8 +7,23 @@ import { getProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 const TIME_ZONE = 'America/Sao_Paulo';
 
-// Função auxiliar para criar string de cookies
-const createCookieString = (authToken: string, structureId: string = "58") => {
+// Deriva o tenant a partir do subdomínio do baseUrl (ex: botoclinic.elosclub.com.br -> "botoclinic")
+const getTenant = (baseUrl: string): string | undefined => {
+  try {
+    return new URL(baseUrl).hostname.split(".")[0];
+  } catch {
+    return undefined;
+  }
+};
+
+// Função auxiliar para criar string de cookies.
+// O provider valida o cookie de autenticação com sufixo do tenant (ex: "Authentication_botoclinic").
+const createCookieString = (
+  authToken: string,
+  structureId: string = "58",
+  baseUrl?: string
+) => {
+  const tenant = baseUrl ? getTenant(baseUrl) : undefined;
   return [
     `tz=America%2FMaceio`,
     `slot-routing-url=-`,
@@ -16,6 +31,7 @@ const createCookieString = (authToken: string, structureId: string = "58") => {
     `_ga=GA1.1.1853101631.1733855667`,
     `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
     `Authentication=${authToken}`,
+    ...(tenant ? [`Authentication_${tenant}=${authToken}`] : []),
   ].join("; ");
 };
 
@@ -175,7 +191,7 @@ export const getProcedureTypes = async (req: Request, res: Response) => {
     }
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     const timestamp = new Date().getTime();
     const url = `${providerConfig.baseUrl}/Search/Get?searchTerm=&pageSize=100&pageNum=1&searchName=ItemClassifier&extraCondition=&_=${timestamp}`;
@@ -298,7 +314,7 @@ export const getAvailableProcedures = async (req: Request, res: Response) => {
     const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     // Criar os dados do formulário
     const formData = new URLSearchParams();
@@ -447,7 +463,7 @@ export const getDailyProcedures = async (req: Request, res: Response) => {
     });
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     // Criar os dados do formulário - baseado exatamente no CURL bem-sucedido
     const formData = new URLSearchParams({
@@ -670,7 +686,7 @@ export const getAllProcedures = async (req: Request, res: Response) => {
     const searchTerm = req.query.searchTerm || "";
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     const timestamp = new Date().getTime();
     const url = `${providerConfig.baseUrl}/Search/Get?searchTerm=${searchTerm}&pageSize=${pageSize}&pageNum=${pageNum}&searchName=ServiceItem&extraCondition=&_=${timestamp}`;

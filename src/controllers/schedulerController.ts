@@ -4,8 +4,24 @@ import { proxiedAxios } from '../services/apiClient';
 import { getProvider } from '../config/providers';
 import { ProviderType } from '../types/provider';
 
-// Função auxiliar para criar string de cookies
-const createCookieString = (authToken: string, structureId: string = "58") => {
+// Deriva o tenant a partir do subdomínio do baseUrl (ex: https://botoclinic.elosclub.com.br -> "botoclinic")
+const getTenant = (baseUrl: string): string | undefined => {
+  try {
+    return new URL(baseUrl).hostname.split(".")[0];
+  } catch {
+    return undefined;
+  }
+};
+
+// Função auxiliar para criar string de cookies.
+// O provider valida o cookie de autenticação nomeado com sufixo do tenant
+// (ex: "Authentication_botoclinic"). Enviamos ambos os nomes por segurança.
+const createCookieString = (
+  authToken: string,
+  structureId: string = "58",
+  baseUrl?: string
+) => {
+  const tenant = baseUrl ? getTenant(baseUrl) : undefined;
   return [
     `tz=America%2FMaceio`,
     `slot-routing-url=-`,
@@ -13,6 +29,7 @@ const createCookieString = (authToken: string, structureId: string = "58") => {
     `_ga=GA1.1.1853101631.1733855667`,
     `_ga_H3Z1Q956EV=GS1.1.1738295739.7.0.1738295739.0.0.0`,
     `Authentication=${authToken}`,
+    ...(tenant ? [`Authentication_${tenant}=${authToken}`] : []),
   ].join("; ");
 };
 
@@ -70,7 +87,7 @@ export const getSchedules = async (req: Request, res: Response) => {
     console.log(`[getSchedules] Usando provider: ${providerConfig.name} (${providerConfig.baseUrl})`);
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     // Criar os dados do formulário
     const formData = new URLSearchParams({
@@ -186,7 +203,7 @@ export const getAvailabilityPeriods = async (req: Request, res: Response) => {
     const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     // Criar os dados do formulário
     const formData = new URLSearchParams();
@@ -310,7 +327,7 @@ export const submitAvailability = async (req: Request, res: Response) => {
     const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     // Formatar os dados exatamente conforme esperado pela API
     const formData = new URLSearchParams();
@@ -435,7 +452,7 @@ export const updateStatus = async (req: Request, res: Response) => {
     const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     // Criar os dados do formulário
     const formData = new URLSearchParams({
@@ -535,7 +552,7 @@ export const getScheduleById = async (req: Request, res: Response) => {
     const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     console.log("Enviando requisição de detalhes do agendamento:", {
       url: `${providerConfig.baseUrl}/Scheduler/Form/${id}`,
@@ -680,7 +697,7 @@ export const getScheduleHistory = async (req: Request, res: Response) => {
 
     const providerConfig = getProvider(provider as ProviderType);
     const structureId = (req.headers["x-organization-structure"] as string) || providerConfig.defaultStructureId;
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     const formData = new URLSearchParams({
       sort: sort.toString(),
@@ -769,7 +786,7 @@ export const getUpcomingSchedules = async (req: Request, res: Response) => {
     endDate.setHours(23, 59, 59, 999);
 
     // Criar a string de cookies
-    const cookies = createCookieString(authToken, structureId);
+    const cookies = createCookieString(authToken, structureId, providerConfig.baseUrl);
 
     // Criar os dados do formulário
     const formData = new URLSearchParams({
