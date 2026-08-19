@@ -131,9 +131,10 @@ export const login = async (
       return;
     }
 
-    // Extrair o cookie de autenticação
+    // Extrair o cookie de autenticação.
+    // O provider pode nomear o cookie com sufixo do tenant (ex: "Authentication_botoclinic").
     const authCookie = cookies.find((cookie: string) =>
-      cookie.includes("Authentication=")
+      /^Authentication(_[^=]+)?=/.test(cookie)
     );
 
     if (!authCookie) {
@@ -141,8 +142,8 @@ export const login = async (
       return;
     }
 
-    // Extrair apenas o valor do token de autenticação
-    const authToken = authCookie.split(";")[0].replace("Authentication=", "");
+    // Extrair apenas o valor do token de autenticação (tudo após o primeiro "=")
+    const authToken = authCookie.split(";")[0].split("=").slice(1).join("=");
 
     // Retornar o token de autenticação
     res.status(200).json({
@@ -160,13 +161,15 @@ export const login = async (
 
       if (cookies) {
         const authCookie = cookies.find((cookie: string) =>
-          cookie.includes("Authentication=")
+          /^Authentication(_[^=]+)?=/.test(cookie)
         );
 
         if (authCookie) {
           const authToken = authCookie
             .split(";")[0]
-            .replace("Authentication=", "");
+            .split("=")
+            .slice(1)
+            .join("=");
 
           res.status(200).json({
             success: true,
